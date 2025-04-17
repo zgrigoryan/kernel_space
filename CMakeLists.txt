@@ -8,3 +8,6 @@ add_executable(kernel_space
               heap_overflow.cpp
               kernel_access.cpp 
               )
+if (MSVC)
+    add_compile_options(/EHa)
+endif()
