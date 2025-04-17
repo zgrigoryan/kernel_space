@@ -14,7 +14,18 @@
 #include <string>
 #include <vector>
 
-static sigjmp_buf JUMP_BUF;          // for SIGSEGV recovery
+
+#if defined(_WIN32)
+    #include <setjmp.h>      // ← ISO version on Windows
+    static jmp_buf JUMP_BUF;
+    #define SETJMP(env)  setjmp(env)
+    #define LONGJMP(env, val) longjmp(env, val)
+#else
+    #include <csetjmp>       // POSIX version everywhere else
+    static sigjmp_buf JUMP_BUF;
+    #define SETJMP(env)  sigsetjmp(env, 1)
+    #define LONGJMP(env, val) siglongjmp(env, val)
+#endif
 
 /* ------------------------------------------------------------------------- */
 /* Small wrapper that runs `fn`, catches SIGSEGV and measures nanoseconds    */
