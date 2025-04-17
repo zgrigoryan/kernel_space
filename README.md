@@ -72,8 +72,6 @@ make plot
 
 ![Crash‑latency plot](mem_crash_plot.png)
 
-*(Your bars will differ — higher bar ⇒ loop survived longer before crashing.)*
-
 ---
 
 ## 🧐 Why can’t user programs touch kernel memory?
