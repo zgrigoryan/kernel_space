@@ -3,7 +3,7 @@ project(kernel_space)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(kernek_space
+add_executable(kernel_space
               main.cpp
               heap_overflow.cpp
               kernel_access.cpp 
