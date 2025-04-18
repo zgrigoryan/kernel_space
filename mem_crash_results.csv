@@ -1,6 +1,0 @@
-Trial,Test,Time_ns,SegFaulted
-1,Heap,32583,0
-2,Heap,8875,0
-3,Heap,8000,0
-4,Heap,7917,0
-5,Heap,7834,0

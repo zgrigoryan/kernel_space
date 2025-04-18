@@ -1,6 +1,7 @@
+// heap_overflow.cpp
 #include "heap_overflow.h"
 #include <cstring>   // std::memset
-#include <cstdlib>   // std::malloc, std::free
+#include <cstdlib>   // std::malloc
 #include <iostream>
 
 void run_heap_overflow(std::size_t alloc_sz,
@@ -11,15 +12,19 @@ void run_heap_overflow(std::size_t alloc_sz,
         std::cout << "[heap_overflow] malloc " << alloc_sz
                   << " bytes, then write +" << overrun_sz << '\n';
 
-    char *buf = static_cast<char*>(std::malloc(alloc_sz));
+    char* buf = static_cast<char*>(std::malloc(alloc_sz));
     if (!buf) {
         std::perror("malloc");
         std::exit(EXIT_FAILURE);
     }
     std::memset(buf, 0, alloc_sz);
 
+    // Walk off the end of the block until you hit the guard page.
     for (std::size_t i = 0; i < overrun_sz; ++i)
-        buf[alloc_sz + i] = 'X';         // undefined behaviour → SIGSEGV
+        buf[alloc_sz + i] = 'X';  // this will trigger an SEH/SIGSEGV
+
+    // We intentionally corrupt the block’s metadata, so calling free()
+    // would abort immediately instead of faulting on the guard page.
 }
 
 void print_heap_overflow_help(std::string_view prog)
