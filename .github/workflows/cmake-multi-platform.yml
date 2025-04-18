@@ -82,11 +82,22 @@ jobs:
         echo "Running ./kernel_space"
         ./kernel_space --test both --trials 3 > app_output.txt
 
-    - name: Run tests on Windows
+    - name: Run executable on Windows
       if: runner.os == 'Windows'
       shell: pwsh
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
       run: |
-        Write-Host "Running .\Release\kernel_space.exe"
-        .\Release\kernel_space.exe --test both --trials 3 `
-          | Out-File -FilePath app_output.txt -Encoding utf8
+        $exePath = "${{ steps.strings.outputs.build-output-dir }}\Release\kernel_space.exe"
+        if (Test-Path $exePath) {
+            Write-Host "Running $exePath"
+            try {
+                & $exePath --test both --trials 3
+                Write-Host "Execution completed successfully."
+            } catch {
+                Write-Host "Error during execution: $_"
+                exit 1
+            }
+        } else {
+            Write-Host "Executable not found: $exePath"
+            exit 1
+        }
