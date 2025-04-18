@@ -110,8 +110,14 @@ int main(int argc, char** argv)
     csv << "Trial,Test,Time_ns,SegFaulted\n";
 
     std::vector<RunResult> heap_res, kern_res;
+    
+    std::cout << "Starting heap overflow test...\n";
     auto heap_fn = [&] { run_heap_overflow(opt.alloc, opt.over); };
+    std::cout << "Heap overflow test finished.\n";
+    
+    std::cout << "Starting kernel access test...\n";
     auto kern_fn = [&] { run_kernel_access(opt.addr); };
+    std::cout << "Kernel access test finished.\n";
 
     for (int t = 1; t <= opt.trials; ++t) {
         // Run heap test on all platforms (Linux/Windows)
