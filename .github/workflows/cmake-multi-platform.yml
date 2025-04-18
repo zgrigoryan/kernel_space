@@ -78,12 +78,14 @@ jobs:
       shell: bash
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
       run: |
-        exe="./kernel_space"                       # Unix path
+        exe="./kernel_space"
         if [[ "$RUNNER_OS" == "Windows" ]]; then
-          exe="Release/kernel_space.exe"           # VS multi‑config path
+          exe="Release/kernel_space.exe"
         fi
+    
         echo "Running $exe"
         "$exe" --test both --trials 3 > app_output.txt
+
 
         echo "Running $executable_name"
         ./$executable_name > app_output.txt
