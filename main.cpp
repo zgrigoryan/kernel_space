@@ -36,30 +36,28 @@ struct RunResult { bool crashed{}; long long ns{}; };
 
 void segv_handler(int) { LONGJMP(JUMP_BUF,1); }
 
+
 RunResult run_with_guard(const std::function<void()>& fn)
 {
     zen::timer t;
-
-#if defined(_WIN32)           // ---------- Windows branch
-    _set_se_translator([](unsigned, EXCEPTION_POINTERS*) {
-        throw std::runtime_error("SEH");
-    });
-
     RunResult r;
-    try {
-        if (SETJMP(JUMP_BUF) == 0) {
+
+#if defined(_WIN32)            // -------- Windows branch (SEH)
+    if (SETJMP(JUMP_BUF) == 0) {
+        __try {                         // catch AV/GP instantly
             t.start(); fn(); t.stop();
             r.crashed = false;
-        } else {
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER) {
             t.stop(); r.crashed = true;
         }
-    } catch (const std::runtime_error&) {   // AV translated
+    } else {                            // longjmp path (unused on Win)
         t.stop(); r.crashed = true;
     }
-#else                          // ---------- POSIX branch
+
+#else                               // -------- POSIX branch (SIGSEGV)
     std::signal(SIGSEGV, segv_handler);
 
-    RunResult r;
     if (SETJMP(JUMP_BUF) == 0) {
         t.start(); fn(); t.stop();
         r.crashed = false;
@@ -72,6 +70,7 @@ RunResult run_with_guard(const std::function<void()>& fn)
     r.ns = t.duration<zen::timer::nsec>().count();
     return r;
 }
+
 /* ------------------------------------------------------------------------- */
 struct Opt {
     enum class Which { Heap, Kernel, Both } test = Which::Both;
