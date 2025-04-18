@@ -92,59 +92,51 @@ Opt parse(int argc, char** argv)
 
 int main(int argc, char** argv)
 {
-    auto opt = parse(argc,argv);
+    auto opt = parse(argc, argv);
     std::ofstream csv("mem_crash_results.csv");
-    csv<<"Trial,Test,Time_ns,SegFaulted\n";
+    csv << "Trial,Test,Time_ns,SegFaulted\n";
 
     std::vector<RunResult> heap_res, kern_res;
     auto heap_fn = [&]{ run_heap_overflow(opt.alloc, opt.over); };
-    auto kern_fn = [&]{ run_kernel_access(opt.addr);           };
 
     for(int t = 1; t <= opt.trials; ++t) {
-        // Always run heap on all platforms
-        {
+        // Always run heap overflow test on Windows
+        if (opt.test == Opt::Which::Heap || opt.test == Opt::Which::Both) {
             auto r = run_with_guard(heap_fn);
             heap_res.push_back(r);
-            csv<<t<<",Heap,"<<r.ns<<','<<r.crashed<<'\n';
+            csv << t << ",Heap," << r.ns << ',' << r.crashed << '\n';
         }
 
-#if !defined(_WIN32)
-        // Only run kernel‐access on non‐Windows
+        // Skip kernel access test on Windows to avoid crashing
+        #if !defined(_WIN32)
         if (opt.test == Opt::Which::Kernel || opt.test == Opt::Which::Both) {
             auto r = run_with_guard(kern_fn);
             kern_res.push_back(r);
-            csv<<t<<",Kernel,"<<r.ns<<','<<r.crashed<<'\n';
+            csv << t << ",Kernel," << r.ns << ',' << r.crashed << '\n';
         }
-#else
-        // On Windows we skip the kernel test entirely
-        if (opt.test != Opt::Which::Heap) {
-            std::cout << "[info] Skipping kernel‐access test on Windows\n";
-        }
-#endif
+        #endif
     }
     csv.close();
 
+    // Summarise the results and print them
     auto summarise = [&](const std::vector<RunResult>& v){
-        long long tot=0; int faults=0;
-        for(auto& x:v){ tot+=x.ns; faults+=x.crashed; }
-        return std::pair<long long,int>{
-            v.empty()?0:tot/static_cast<long long>(v.size()), faults};
+        long long total = 0; int faults = 0;
+        for (auto& x : v) { total += x.ns; faults += x.crashed; }
+        return std::pair<long long, int>{ v.empty() ? 0 : total / static_cast<long long>(v.size()), faults };
     };
 
     auto [h_avg, h_fault] = summarise(heap_res);
     auto [k_avg, k_fault] = summarise(kern_res);
 
     std::stringstream out;
-    out<<"\n| Test   | Avg time (ns) | Trials | SIGSEGVs |\n"
-       <<"|--------|--------------:|-------:|---------:|\n";
+    out << "\n| Test   | Avg time (ns) | Trials | SIGSEGVs |\n"
+        << "|--------|--------------:|-------:|---------:|\n";
     if (!heap_res.empty())
-        out<<"| Heap   | "<<std::setw(12)<<h_avg<<" | "
-           <<heap_res.size()<<" | "<<h_fault<<" |\n";
-#if !defined(_WIN32)
+        out << "| Heap   | " << std::setw(12) << h_avg << " | "
+            << heap_res.size() << " | " << h_fault << " |\n";
     if (!kern_res.empty())
-        out<<"| Kernel | "<<std::setw(12)<<k_avg<<" | "
-           <<kern_res.size()<<" | "<<k_fault<<" |\n";
-#endif
+        out << "| Kernel | " << std::setw(12) << k_avg << " | "
+            << kern_res.size() << " | " << k_fault << " |\n";
 
     zen::print(out.str());
     return 0;
