@@ -28,6 +28,54 @@
     #define SETJMP(env)   sigsetjmp(env,1)
     #define LONGJMP(env,v) siglongjmp(env,v)
 #endif
+#ifdef _WIN32
+#   define _CRT_SECURE_NO_WARNINGS
+#   include <windows.h>
+#   include <eh.h>          // _set_se_translator
+#endif
+...
+#if defined(_WIN32)         // MSVC : jmp_buf branch unchanged
+    #include <setjmp.h>
+    static jmp_buf JUMP_BUF;
+    #define SETJMP(env)   setjmp(env)
+    #define LONGJMP(env,v) longjmp(env,v)
+#else
+    ...
+#endif
+...
+RunResult run_with_guard(const std::function<void()>& fn)
+{
+#ifdef _WIN32
+    // Convert SEH to C++ so we can 'catch' access violations
+    _set_se_translator([](unsigned code, EXCEPTION_POINTERS*) {
+        throw code;                     // re‑throw as unsigned int
+    });
+#endif
+    zen::timer t;
+#if !defined(_WIN32)                   // POSIX branch keeps the sig handler
+    std::signal(SIGSEGV, segv_handler);
+#endif
+    RunResult r;
+    try {
+        if (SETJMP(JUMP_BUF) == 0) {   // (on Windows just returns 0)
+            t.start(); fn(); t.stop();
+            r.crashed = false;
+        } else {
+            t.stop(); r.crashed = true;    // POSIX long‑jmp comeback
+        }
+    }
+#ifdef _WIN32
+    catch (unsigned) {                 // caught SEH: AV, guard‑page, …
+        t.stop(); r.crashed = true;
+    }
+#endif
+    r.ns = t.duration<zen::timer::nsec>().count();
+#if !defined(_WIN32)
+    std::signal(SIGSEGV, SIG_DFL);
+#endif
+    return r;
+}
+
 /* ------------------------------------------------------------------------- */
 struct RunResult { bool crashed{}; long long ns{}; };
 
