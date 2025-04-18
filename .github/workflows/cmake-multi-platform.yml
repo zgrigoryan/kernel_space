@@ -91,7 +91,7 @@ jobs:
         Write-Host "Checking if executable exists at $exePath"
     
         if (Test-Path $exePath) {
-            Write-Host "Executable found. Running the heap overflow test."
+            Write-Host "Running heap overflow test"
             try {
                 # Skip the kernel test on Windows explicitly
                 & $exePath --test heap --trials 3
