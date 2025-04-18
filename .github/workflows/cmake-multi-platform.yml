@@ -85,8 +85,3 @@ jobs:
     
         echo "Running $exe"
         "$exe" --test both --trials 3 > app_output.txt
-
-
-        echo "Running $executable_name"
-        ./$executable_name > app_output.txt
-  
