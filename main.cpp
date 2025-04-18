@@ -43,27 +43,35 @@ RunResult run_with_guard(const std::function<void()>& fn)
     zen::timer t;
     RunResult r;
 
-#if defined(_WIN32)            // -------- Windows branch (SEH)
+#if defined(_WIN32)  // SEH for Windows
     if (SETJMP(JUMP_BUF) == 0) {
-        __try {                         // catch AV/GP instantly
-            t.start(); fn(); t.stop();
+        __try {
+            t.start();
+            fn();
+            t.stop();
             r.crashed = false;
         }
-        __except (EXCEPTION_EXECUTE_HANDLER) {
-            t.stop(); r.crashed = true;
+        __except(EXCEPTION_EXECUTE_HANDLER) {
+            t.stop();
+            r.crashed = true;
+            Write-Host "Access violation occurred (SEH)"
         }
-    } else {                            // longjmp path (unused on Win)
-        t.stop(); r.crashed = true;
+    } else {
+        t.stop();
+        r.crashed = true;
     }
 
-#else                               // -------- POSIX branch (SIGSEGV)
+#else  // POSIX handling
     std::signal(SIGSEGV, segv_handler);
 
     if (SETJMP(JUMP_BUF) == 0) {
-        t.start(); fn(); t.stop();
+        t.start();
+        fn();
+        t.stop();
         r.crashed = false;
     } else {
-        t.stop(); r.crashed = true;
+        t.stop();
+        r.crashed = true;
     }
     std::signal(SIGSEGV, SIG_DFL);
 #endif
