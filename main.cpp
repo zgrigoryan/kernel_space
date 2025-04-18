@@ -36,39 +36,40 @@ struct RunResult { bool crashed{}; long long ns{}; };
 
 void segv_handler(int) { LONGJMP(JUMP_BUF,1); }
 
-/* Run fn(), catch AV/SIGSEGV, time until fault ---------------------------- */
 RunResult run_with_guard(const std::function<void()>& fn)
 {
     zen::timer t;
 
-#if !defined(_WIN32)                   // POSIX path installs SIGSEGV handler
-    std::signal(SIGSEGV, segv_handler);
-#else                                  // Windows: translate SEH → C++ except.
+#if defined(_WIN32)           // ---------- Windows branch
     _set_se_translator([](unsigned, EXCEPTION_POINTERS*) {
-        throw std::runtime_error("SEH");   // payload unused
+        throw std::runtime_error("SEH");
     });
-#endif
 
     RunResult r;
     try {
-        if (SETJMP(JUMP_BUF) == 0) {       // (Windows returns 0 immediately)
-            t.start(); fn(); t.stop();     // may crash inside
-            r.crashed = false;             // finished without fault
-        } else {                           // POSIX long‑jmp back here
+        if (SETJMP(JUMP_BUF) == 0) {
+            t.start(); fn(); t.stop();
+            r.crashed = false;
+        } else {
             t.stop(); r.crashed = true;
         }
-    }
-#if defined(_WIN32)
-    catch (const std::runtime_error&) {    // SEH translated
+    } catch (const std::runtime_error&) {   // AV translated
         t.stop(); r.crashed = true;
     }
+#else                          // ---------- POSIX branch
+    std::signal(SIGSEGV, segv_handler);
+
+    RunResult r;
+    if (SETJMP(JUMP_BUF) == 0) {
+        t.start(); fn(); t.stop();
+        r.crashed = false;
+    } else {
+        t.stop(); r.crashed = true;
+    }
+    std::signal(SIGSEGV, SIG_DFL);
 #endif
 
     r.ns = t.duration<zen::timer::nsec>().count();
-
-#if !defined(_WIN32)
-    std::signal(SIGSEGV, SIG_DFL);         // restore default
-#endif
     return r;
 }
 /* ------------------------------------------------------------------------- */
