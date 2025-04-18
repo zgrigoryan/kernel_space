@@ -78,9 +78,10 @@ jobs:
       shell: bash
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
       run: |
-        exe="./kernel_space"
         if [[ "$RUNNER_OS" == "Windows" ]]; then
-          exe="Release/kernel_space.exe"
+          exe="./Release/kernel_space.exe"       # <- note the ./ prefix
+        else
+          exe="./kernel_space"
         fi
     
         echo "Running $exe"
