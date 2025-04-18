@@ -16,14 +16,21 @@ void run_heap_overflow(std::size_t alloc_sz,
         std::perror("malloc");
         std::exit(EXIT_FAILURE);
     }
+
     std::memset(buf, 0, alloc_sz);
 
-    for (std::size_t i = 0; i < overrun_sz; ++i)
-        buf[alloc_sz + i] = 'X';  // this will trigger an SEH/SIGSEGV
+    if (overrun_sz > alloc_sz) {
+        std::cout << "[warning] Overrun size is larger than allocated size. This may cause memory corruption or crash." << std::endl;
+    }
 
-    // We intentionally corrupt the block’s metadata, so calling free()
-    // would abort immediately instead of faulting on the guard page.
+    for (std::size_t i = 0; i < overrun_sz; ++i) {
+        buf[alloc_sz + i] = 'X';  // this will trigger an SEH/SIGSEGV
+    }
+
+    // **DO NOT** free(buf) here, as we are intentionally corrupting the block.
+    std::cout << "[heap_overflow] Memory write completed. Guard page likely triggered.\n";
 }
+
 
 void print_heap_overflow_help(std::string_view prog)
 {
