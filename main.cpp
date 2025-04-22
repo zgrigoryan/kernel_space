@@ -60,25 +60,29 @@ RunResult run_with_guard(const std::function<void()>& fn)
         t.stop();
         r.crashed = true;
     }
-
-#else  // POSIX handling
+#else  // ---------- POSIX ------------------------------
     std::signal(SIGSEGV, segv_handler);
+    std::signal(SIGABRT, segv_handler);   // ← NEW: catch allocator aborts
 
     if (SETJMP(JUMP_BUF) == 0) {
         t.start();
-        fn();
+        fn();                 // may smash the heap
         t.stop();
         r.crashed = false;
     } else {
         t.stop();
-        r.crashed = true;
+        r.crashed = true;     // we jumped back from SIGSEGV or SIGABRT
     }
+
+    // restore defaults
     std::signal(SIGSEGV, SIG_DFL);
-#endif
+    std::signal(SIGABRT, SIG_DFL);
+#endif                             
 
     r.ns = t.duration<zen::timer::nsec>().count();
     return r;
-}
+}                              
+
 
 // Command-line argument parsing structure
 struct Opt {
