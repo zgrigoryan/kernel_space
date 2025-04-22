@@ -54,7 +54,7 @@ RunResult run_with_guard(const std::function<void()>& fn)
         __except(EXCEPTION_EXECUTE_HANDLER) {
             t.stop();
             r.crashed = true;
-            Write-Host "Access violation occurred (SEH)"
+            std::cerr << "Access violation occurred (SEH)\n";
         }
     } else {
         t.stop();
